@@ -1,4 +1,4 @@
-use chrono::prelude::*;
+use chrono::{prelude::*, LocalResult};
 use eframe::egui::{widgets::Label, Button, Color32, RichText, Ui};
 
 const DT_FORMAT_S: &str = "%F %T";
@@ -42,6 +42,11 @@ impl super::ToolItem for TimestampConverter {
         let mut responses = vec![];
         ui.horizontal(|ui| {
             responses.push(ui.text_edit_singleline(&mut self.input));
+            if ui.add(Button::new("❌").frame(false)).clicked() {
+                self.input = String::new();
+                self.format_warning = "";
+                responses[0].request_focus();
+            }
             ui.add(Label::new(
                 RichText::new(self.format_warning).color(Color32::YELLOW),
             ));
@@ -79,7 +84,8 @@ impl super::ToolItem for TimestampConverter {
                 {
                     input_type = InputType::Timestamp;
                     let nsecs = rr * 10_u32.pow(9 - r.len() as u32);
-                    let dt = NaiveDateTime::from_timestamp(secs, nsecs);
+                    //let dt = NaiveDateTime::from_timestamp(secs, nsecs);
+                    let dt = Local.timestamp(secs, nsecs);
                     self.converted = match self.unit {
                         TimeUnit::Sec => dt.format(DT_FORMAT_S).to_string(),
                         TimeUnit::Milli => dt.format(DT_FORMAT_MS).to_string(),
@@ -88,19 +94,25 @@ impl super::ToolItem for TimestampConverter {
                     };
                 } else if let Ok(dt) = NaiveDateTime::parse_from_str(input, DT_FORMAT_MS) {
                     input_type = InputType::DateTimeStr;
-                    let ns = dt.timestamp_nanos();
-                    let scale = match self.unit {
-                        TimeUnit::Sec => 1e9 as i64,
-                        TimeUnit::Milli => 1e6 as i64,
-                        TimeUnit::Micro => 1e3 as i64,
-                        TimeUnit::Nano => 1,
-                    };
-                    self.converted = format!("{}", ns / scale);
+                    match Local.from_local_datetime(&dt) {
+                        LocalResult::Single(dt) => {
+                            let ns = dt.timestamp_nanos();
+                            let scale = match self.unit {
+                                TimeUnit::Sec => 1e9 as i64,
+                                TimeUnit::Milli => 1e6 as i64,
+                                TimeUnit::Micro => 1e3 as i64,
+                                TimeUnit::Nano => 1,
+                            };
+                            self.converted = format!("{}", ns / scale);
+                        }
+                        _ => self.format_warning = "无法转换时间戳到本地时区",
+                    }
                 }
             } else if let Ok(secs) = i64::from_str_radix(input, 10) {
                 // len <= 10
                 input_type = InputType::Timestamp;
-                let dt = NaiveDateTime::from_timestamp(secs, 0);
+                //let dt = NaiveDateTime::from_timestamp(secs, 0);
+                let dt = Local.timestamp(secs, 0);
                 self.converted = dt.format(DT_FORMAT_S).to_string();
             }
             let len = input.len();
