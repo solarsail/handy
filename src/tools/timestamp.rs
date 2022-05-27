@@ -76,12 +76,11 @@ impl super::ToolItem for TimestampConverter {
             let input = self.input.trim();
             self.copied_prompt = "";
             let mut input_type = InputType::Invalid;
-            if input.len() == 0 {
+            if input.is_empty() {
                 self.converted.clear();
             } else if input.len() > 10 {
                 let (s, r) = input.split_at(10);
-                if let (Ok(secs), Ok(rr)) = (i64::from_str_radix(s, 10), u32::from_str_radix(r, 10))
-                {
+                if let (Ok(secs), Ok(rr)) = (s.parse::<i64>(), r.parse::<u32>()) {
                     input_type = InputType::Timestamp;
                     let nsecs = rr * 10_u32.pow(9 - r.len() as u32);
                     //let dt = NaiveDateTime::from_timestamp(secs, nsecs);
@@ -108,7 +107,7 @@ impl super::ToolItem for TimestampConverter {
                         _ => self.format_warning = "无法转换时间戳到本地时区",
                     }
                 }
-            } else if let Ok(secs) = i64::from_str_radix(input, 10) {
+            } else if let Ok(secs) = input.parse::<i64>() {
                 // len <= 10
                 input_type = InputType::Timestamp;
                 //let dt = NaiveDateTime::from_timestamp(secs, 0);
