@@ -5,7 +5,7 @@ use eframe::{
 
 use crate::{
     tool_card::ToolCard,
-    tools::{TimestampConverter, ToolItem},
+    tools::{JsonConverter, TimestampConverter, ToolItem},
 };
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
@@ -20,7 +20,10 @@ impl Default for App {
     fn default() -> Self {
         Self {
             // Example stuff:
-            tools: vec![Box::new(TimestampConverter::default())],
+            tools: vec![
+                Box::new(TimestampConverter::default()),
+                Box::new(JsonConverter::default()),
+            ],
             active_tool: Some(0),
         }
     }
