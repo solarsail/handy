@@ -66,10 +66,10 @@ impl super::ToolItem for TimestampConverter {
         });
         ui.horizontal(|ui| {
             responses.extend([
-                ui.radio_value(&mut self.unit, TimeUnit::Sec, "秒"),
-                ui.radio_value(&mut self.unit, TimeUnit::Milli, "毫秒"),
-                ui.radio_value(&mut self.unit, TimeUnit::Micro, "微秒"),
-                ui.radio_value(&mut self.unit, TimeUnit::Nano, "纳秒"),
+                ui.selectable_value(&mut self.unit, TimeUnit::Sec, "秒"),
+                ui.selectable_value(&mut self.unit, TimeUnit::Milli, "毫秒"),
+                ui.selectable_value(&mut self.unit, TimeUnit::Micro, "微秒"),
+                ui.selectable_value(&mut self.unit, TimeUnit::Nano, "纳秒"),
             ]);
         });
         if responses.iter().any(|r| r.changed()) {

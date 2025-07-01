@@ -6,7 +6,7 @@ use eframe::{
 
 use crate::{
     tool_card::ToolCard,
-    tools::{JsonConverter, TimestampConverter, ToolItem},
+    tools::{JsonConverter, TimestampConverter, ToolItem, UrlConverter},
 };
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -25,6 +25,7 @@ impl App {
             tools: vec![
                 Box::new(TimestampConverter::default()),
                 Box::new(JsonConverter::default()),
+                Box::new(UrlConverter::default()),
             ],
             active_tool: Some(0),
         }
@@ -84,6 +85,7 @@ impl eframe::App for App {
                     ui.separator();
                 }
             }
+            egui::warn_if_debug_build(ui);
             /*
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.horizontal(|ui| {
@@ -103,7 +105,6 @@ impl eframe::App for App {
             if let Some(idx) = active_tool_idx {
                 tools[*idx].update(ui);
             }
-            egui::warn_if_debug_build(ui);
         });
     }
 }
