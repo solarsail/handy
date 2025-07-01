@@ -1,28 +1,46 @@
 [package]
 name = "handy"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.56"
+edition = "2024"
+rust-version = "1.88"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 chrono = "0.4.19"
-eframe = "0.16.0" # Gives us egui, epi and web+native backends
-escape8259 = "0.5.2"
+eframe = { version = "0.31", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "wayland",
+] } # Gives us egui, epi and web+native backends
+egui_json_tree = "0.11.0"
+log = "0.4.27"
 
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = "1.0.91"
 
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.11.8"
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4.50"
+web-sys = "0.3.70"              # to access the DOM (to hide the loading text)
+
 [features]
 default = []
-persistence = ["eframe/persistence", "serde"] # Enable if you want to persist app state on shutdown
+persistence = [
+    "eframe/persistence",
+    "serde",
+] # Enable if you want to persist app state on shutdown
 
 [profile.release]
 opt-level = 2 # fast and small wasm
+
+# Optimize all dependencies even in debug builds:
+[profile.dev.package."*"]
+opt-level = 2
 
 [patch.crates-io]
 

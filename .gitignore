@@ -1,2 +1,5 @@
-/target
-/afdko_env
+target
+afdko_env
+.zed
+.vscode
+dist

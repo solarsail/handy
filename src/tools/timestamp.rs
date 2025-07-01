@@ -1,5 +1,5 @@
-use chrono::{prelude::*, LocalResult};
-use eframe::egui::{widgets::Label, Button, Color32, RichText, Ui};
+use chrono::{LocalResult, prelude::*};
+use eframe::egui::{Button, Color32, RichText, Ui, widgets::Label};
 
 const DT_FORMAT_S: &str = "%F %T";
 const DT_FORMAT_MS: &str = "%F %T%.3f";
@@ -57,7 +57,7 @@ impl super::ToolItem for TimestampConverter {
                 .on_hover_text("点击复制")
                 .clicked()
             {
-                ui.output().copied_text = self.converted.clone();
+                ui.ctx().copy_text(self.converted.clone());
                 self.copied_prompt = "已复制";
             }
             ui.add(Label::new(
@@ -84,25 +84,32 @@ impl super::ToolItem for TimestampConverter {
                     input_type = InputType::Timestamp;
                     let nsecs = rr * 10_u32.pow(9 - r.len() as u32);
                     //let dt = NaiveDateTime::from_timestamp(secs, nsecs);
-                    let dt = Local.timestamp(secs, nsecs);
-                    self.converted = match self.unit {
-                        TimeUnit::Sec => dt.format(DT_FORMAT_S).to_string(),
-                        TimeUnit::Milli => dt.format(DT_FORMAT_MS).to_string(),
-                        TimeUnit::Micro => dt.format(DT_FORMAT_US).to_string(),
-                        TimeUnit::Nano => dt.format(DT_FORMAT_NS).to_string(),
-                    };
+                    match Local.timestamp_opt(secs, nsecs) {
+                        LocalResult::Single(dt) | LocalResult::Ambiguous(dt, _) => {
+                            self.converted = match self.unit {
+                                TimeUnit::Sec => dt.format(DT_FORMAT_S).to_string(),
+                                TimeUnit::Milli => dt.format(DT_FORMAT_MS).to_string(),
+                                TimeUnit::Micro => dt.format(DT_FORMAT_US).to_string(),
+                                TimeUnit::Nano => dt.format(DT_FORMAT_NS).to_string(),
+                            };
+                        }
+                        _ => self.format_warning = "时间解析失败",
+                    }
                 } else if let Ok(dt) = NaiveDateTime::parse_from_str(input, DT_FORMAT_MS) {
                     input_type = InputType::DateTimeStr;
                     match Local.from_local_datetime(&dt) {
                         LocalResult::Single(dt) => {
-                            let ns = dt.timestamp_nanos();
-                            let scale = match self.unit {
-                                TimeUnit::Sec => 1e9 as i64,
-                                TimeUnit::Milli => 1e6 as i64,
-                                TimeUnit::Micro => 1e3 as i64,
-                                TimeUnit::Nano => 1,
-                            };
-                            self.converted = format!("{}", ns / scale);
+                            if let Some(ns) = dt.timestamp_nanos_opt() {
+                                let scale = match self.unit {
+                                    TimeUnit::Sec => 1e9 as i64,
+                                    TimeUnit::Milli => 1e6 as i64,
+                                    TimeUnit::Micro => 1e3 as i64,
+                                    TimeUnit::Nano => 1,
+                                };
+                                self.converted = format!("{}", ns / scale);
+                            } else {
+                                self.format_warning = "时间解析失败";
+                            }
                         }
                         _ => self.format_warning = "无法转换时间戳到本地时区",
                     }
@@ -111,8 +118,12 @@ impl super::ToolItem for TimestampConverter {
                 // len <= 10
                 input_type = InputType::Timestamp;
                 //let dt = NaiveDateTime::from_timestamp(secs, 0);
-                let dt = Local.timestamp(secs, 0);
-                self.converted = dt.format(DT_FORMAT_S).to_string();
+                match Local.timestamp_opt(secs, 0) {
+                    LocalResult::Single(dt) | LocalResult::Ambiguous(dt, _) => {
+                        self.converted = dt.format(DT_FORMAT_S).to_string();
+                    }
+                    LocalResult::None => self.format_warning = "时间解析失败",
+                }
             }
             let len = input.len();
             self.format_warning = match input_type {
@@ -130,7 +141,7 @@ impl Default for TimestampConverter {
     fn default() -> Self {
         let now = Local::now().naive_local();
         TimestampConverter {
-            input: format!("{}", now.timestamp_millis()),
+            input: format!("{}", now.and_utc().timestamp_millis()),
             converted: now.format(DT_FORMAT_MS).to_string(),
             format_warning: "",
             copied_prompt: "",
