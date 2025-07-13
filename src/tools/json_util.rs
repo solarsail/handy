@@ -1,10 +1,14 @@
 use std::f32;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{Duration, Instant};
 
 use eframe::egui::{
-    Button, Color32, CursorIcon, RichText, ScrollArea, TextEdit, TextStyle, Ui, widgets::Label,
+    Button, CursorIcon, FontFamily, FontId, RichText, ScrollArea, TextEdit, TextFormat, TextStyle,
+    Ui, UiKind, text::LayoutJob, widgets::Label,
 };
 use egui_json_tree::{DefaultExpand, JsonTree, JsonTreeStyle, render::DefaultRender};
-//use unescape::unescape;
+
+use crate::style;
 
 #[derive(PartialEq, Eq)]
 pub enum Formatter {
@@ -28,6 +32,10 @@ pub struct JsonConverter {
     warning: String,
     use_json_tree: bool,
     search_input: String,
+    copied_prompt: &'static str,
+    #[cfg(not(target_arch = "wasm32"))]
+    prompt_vanish_at: Instant,
+    pythonic_style: bool,
 }
 
 impl super::ToolItem for JsonConverter {
@@ -47,6 +55,10 @@ impl super::ToolItem for JsonConverter {
         let font_id = TextStyle::Monospace.resolve(ui.style());
         let line_height = ui.fonts(|fonts| fonts.row_height(&font_id));
         let input_rows = ((desired_height - label_height) / line_height).floor() as usize;
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.copied_prompt != "" && Instant::now() > self.prompt_vanish_at {
+            self.copied_prompt = "";
+        }
 
         ui.horizontal(|ui| {
             ui.set_min_height(desired_height);
@@ -70,7 +82,16 @@ impl super::ToolItem for JsonConverter {
                         ui.label("转换结果");
                         if ui.button("复制").clicked() {
                             ui.ctx().copy_text(self.converted.clone());
+                            self.copied_prompt = "已复制";
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                self.prompt_vanish_at = Instant::now() + Duration::from_secs(2);
+                            }
                         }
+                        ui.add(Label::new(
+                            RichText::new(self.copied_prompt)
+                                .color(style::prompt_color(ui.visuals().dark_mode)),
+                        ));
                     });
                     if self.use_json_tree {
                         // 使用 json viewer
@@ -120,7 +141,7 @@ impl super::ToolItem for JsonConverter {
                                                                 "${}",
                                                                 pointer.replace("/", ".")
                                                             ));
-                                                            ui.close_menu();
+                                                            ui.close_kind(UiKind::Menu);
                                                         }
 
                                                         if ui.button("复制值").clicked() {
@@ -131,7 +152,7 @@ impl super::ToolItem for JsonConverter {
                                                             {
                                                                 ui.ctx().copy_text(pretty_str);
                                                             }
-                                                            ui.close_menu();
+                                                            ui.close_kind(UiKind::Menu);
                                                         }
                                                     });
                                             })
@@ -176,29 +197,30 @@ impl super::ToolItem for JsonConverter {
 
         ui.horizontal(|ui| {
             // 执行按钮
-            let primary_btn_color = if ui.visuals().dark_mode {
-                Color32::from_hex("#005c12").unwrap()
-            } else {
-                Color32::from_hex("#bbe19e").unwrap()
-            };
             let btn_response = ui.scope(|ui| {
                 ui.spacing_mut().button_padding = (8.0, 4.0).into();
-                ui.add(Button::new("⚙ 处理").fill(primary_btn_color))
+                ui.add(Button::new("⚙ 处理").fill(style::primary_color(ui.visuals().dark_mode)))
             });
 
             ui.spacing_mut().item_spacing = (8.0, 8.0).into();
             if btn_response.inner.clicked() {
+                self.copied_prompt = "";
                 self.use_json_tree = false;
+                let input = if self.pythonic_style {
+                    self.input.replace("'", "\"").replace("None", "null")
+                } else {
+                    self.input.clone()
+                };
                 match self.conversion {
-                    Conversion::Deserialize => match serde_json::from_str::<String>(&self.input) {
+                    Conversion::Deserialize => match serde_json::from_str::<String>(&input) {
                         Ok(v) => self.converted = v,
                         Err(e) => self.warning = e.to_string(),
                     },
-                    Conversion::Serialize => match serde_json::to_string(&self.input) {
+                    Conversion::Serialize => match serde_json::to_string(&input) {
                         Ok(v) => self.converted = v,
                         Err(e) => self.warning = e.to_string(),
                     },
-                    _ => self.converted = self.input.clone(),
+                    _ => self.converted = input,
                 }
                 match serde_json::from_str::<serde_json::Value>(&self.converted) {
                     Ok(v) => match self.format {
@@ -243,13 +265,29 @@ impl super::ToolItem for JsonConverter {
             ui.selectable_value(&mut self.format, Formatter::None, "无");
             ui.selectable_value(&mut self.format, Formatter::Pretty, "展开");
             ui.selectable_value(&mut self.format, Formatter::Minimize, "压缩");
+            ui.add_space(16.0);
+            let mut cb_label_job = LayoutJob::default();
+            cb_label_job.append("Python dict 风格（如 ", 0.0, TextFormat::default());
+            cb_label_job.append(
+                "{'key': None}",
+                0.0,
+                TextFormat {
+                    font_id: FontId {
+                        family: FontFamily::Monospace,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            );
+            cb_label_job.append(" ）", 0.0, TextFormat::default());
+            ui.checkbox(&mut self.pythonic_style, cb_label_job);
         });
         ui.add_space(8.0);
 
         // 警告提示
         ui.horizontal(|ui| {
             ui.add(Label::new(
-                RichText::new(&self.warning).color(Color32::YELLOW),
+                RichText::new(&self.warning).color(style::warn_color(ui.visuals().dark_mode)),
             ));
         });
     }
@@ -265,6 +303,10 @@ impl Default for JsonConverter {
             warning: String::new(),
             use_json_tree: false,
             search_input: String::new(),
+            copied_prompt: "",
+            #[cfg(not(target_arch = "wasm32"))]
+            prompt_vanish_at: Instant::now(),
+            pythonic_style: false,
         }
     }
 }

@@ -3,6 +3,7 @@
 #![warn(clippy::all)]
 
 mod app;
+mod style;
 mod tool_card;
 mod tools;
 pub use app::App;

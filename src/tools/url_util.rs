@@ -1,4 +1,6 @@
-use eframe::egui::{Color32, RichText, ScrollArea, TextEdit, TextStyle, Ui, widgets::Label};
+use eframe::egui::{RichText, ScrollArea, TextEdit, TextStyle, Ui, widgets::Label};
+
+use crate::style;
 
 #[derive(PartialEq, Eq)]
 enum Conversion {
@@ -74,6 +76,8 @@ impl super::ToolItem for UrlConverter {
         ui.add_space(8.0);
 
         ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing = (8.0, 8.0).into();
+            ui.label("转换：");
             let btns = vec![
                 ui.selectable_value(&mut self.conversion, Conversion::Decode, "解码"),
                 ui.selectable_value(&mut self.conversion, Conversion::Encode, "编码"),
@@ -86,8 +90,9 @@ impl super::ToolItem for UrlConverter {
         });
         ui.add_space(8.0);
 
+        // 警告信息
         ui.add(Label::new(
-            RichText::new(&self.warning).color(Color32::YELLOW),
+            RichText::new(&self.warning).color(style::warn_color(ui.visuals().dark_mode)),
         ));
     }
 }

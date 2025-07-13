@@ -1,6 +1,6 @@
 [package]
 name = "handy"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.88"
 
@@ -8,13 +8,13 @@ rust-version = "1.88"
 
 [dependencies]
 chrono = "0.4.19"
-eframe = { version = "0.31", default-features = false, features = [
+eframe = { version = "0.32", default-features = false, features = [
     "default_fonts",
     "glow",
     "wayland",
 ] } # Gives us egui, epi and web+native backends
-#egui_json_tree = "0.11.0"
-egui_json_tree = { path = "/Users/xinye.lu/src/egui_json_tree" }
+egui_json_tree = "0.12.0"
+#egui_json_tree = { path = "/Users/xinye.lu/src/egui_json_tree" }
 log = "0.4.27"
 
 serde = { version = "1", features = ["derive"], optional = true }

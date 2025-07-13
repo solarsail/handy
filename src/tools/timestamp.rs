@@ -1,5 +1,10 @@
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{Duration, Instant};
+
 use chrono::{LocalResult, prelude::*};
-use eframe::egui::{Button, Color32, RichText, Ui, widgets::Label};
+use eframe::egui::{Button, RichText, Ui, widgets::Label};
+
+use crate::style;
 
 const DT_FORMAT_S: &str = "%F %T";
 const DT_FORMAT_MS: &str = "%F %T%.3f";
@@ -26,6 +31,8 @@ pub struct TimestampConverter {
     converted: String,
     format_warning: &'static str,
     copied_prompt: &'static str,
+    #[cfg(not(target_arch = "wasm32"))]
+    prompt_vanish_at: Instant,
     unit: TimeUnit,
 }
 
@@ -39,17 +46,26 @@ impl super::ToolItem for TimestampConverter {
     }
 
     fn update(&mut self, ui: &mut Ui) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.copied_prompt != "" && Instant::now() > self.prompt_vanish_at {
+            self.copied_prompt = "";
+        }
+
         let mut responses = vec![];
-        ui.horizontal(|ui| {
-            responses.push(ui.text_edit_singleline(&mut self.input));
-            if ui.add(Button::new("❌").frame(false)).clicked() {
-                self.input = String::new();
-                self.format_warning = "";
-                responses[0].request_focus();
-            }
-            ui.add(Label::new(
-                RichText::new(self.format_warning).color(Color32::YELLOW),
-            ));
+        ui.scope(|ui| {
+            ui.spacing_mut().item_spacing = (4.0, 4.0).into();
+            ui.horizontal(|ui| {
+                responses.push(ui.text_edit_singleline(&mut self.input));
+                if ui.add(Button::new("❌").frame(false)).clicked() {
+                    self.input = String::new();
+                    self.format_warning = "";
+                    responses[0].request_focus();
+                }
+                ui.add(Label::new(
+                    RichText::new(self.format_warning)
+                        .color(style::warn_color(ui.visuals().dark_mode)),
+                ));
+            });
         });
         ui.horizontal(|ui| {
             if ui
@@ -59,9 +75,14 @@ impl super::ToolItem for TimestampConverter {
             {
                 ui.ctx().copy_text(self.converted.clone());
                 self.copied_prompt = "已复制";
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    self.prompt_vanish_at = Instant::now() + Duration::from_secs(2);
+                }
             }
             ui.add(Label::new(
-                RichText::new(self.copied_prompt).color(Color32::DARK_GREEN),
+                RichText::new(self.copied_prompt)
+                    .color(style::prompt_color(ui.visuals().dark_mode)),
             ));
         });
         ui.horizontal(|ui| {
@@ -72,6 +93,21 @@ impl super::ToolItem for TimestampConverter {
                 ui.selectable_value(&mut self.unit, TimeUnit::Nano, "纳秒"),
             ]);
         });
+        ui.separator();
+        ui.horizontal(|ui| {
+            // 当前时间按钮
+            let btn_response = ui.scope(|ui| {
+                ui.spacing_mut().button_padding = (8.0, 4.0).into();
+                ui.add(Button::new("当前时间").fill(style::primary_color(ui.visuals().dark_mode)))
+            });
+            if btn_response.inner.clicked() {
+                let now = Local::now().naive_local();
+                self.input = format!("{}", now.and_utc().timestamp_millis());
+                self.converted = now.format(DT_FORMAT_MS).to_string();
+                self.format_warning = "";
+            }
+        });
+
         if responses.iter().any(|r| r.changed()) {
             let input = self.input.trim();
             self.copied_prompt = "";
@@ -146,6 +182,8 @@ impl Default for TimestampConverter {
             format_warning: "",
             copied_prompt: "",
             unit: TimeUnit::Milli,
+            #[cfg(not(target_arch = "wasm32"))]
+            prompt_vanish_at: Instant::now(),
         }
     }
 }
