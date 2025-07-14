@@ -23,3 +23,11 @@ pub(crate) fn prompt_color(dark_mode: bool) -> Color32 {
         Color32::from_hex("#588157").unwrap()
     }
 }
+
+pub(crate) fn highlight_color(dark_mode: bool) -> Color32 {
+    if dark_mode {
+        Color32::from_hex("#ffa5ab").unwrap()
+    } else {
+        Color32::from_hex("#a53860").unwrap()
+    }
+}

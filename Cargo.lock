@@ -936,6 +936,8 @@ dependencies = [
  "egui_json_tree",
  "env_logger",
  "log",
+ "once_cell",
+ "regex",
  "serde",
  "serde_json",
  "urlencoding",

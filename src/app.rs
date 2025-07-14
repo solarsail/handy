@@ -9,7 +9,7 @@ use eframe::{
 
 use crate::{
     tool_card::ToolCard,
-    tools::{JsonConverter, TimestampConverter, ToolItem, UrlConverter},
+    tools::{JsonConverter, LineFormatter, TimestampConverter, ToolItem, UrlConverter},
 };
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -29,6 +29,7 @@ impl App {
                 Box::new(TimestampConverter::default()),
                 Box::new(JsonConverter::default()),
                 Box::new(UrlConverter::default()),
+                Box::new(LineFormatter::default()),
             ],
             active_tool: Some(0),
         }
