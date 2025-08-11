@@ -1,4 +1,6 @@
-use eframe::egui::{RichText, ScrollArea, TextEdit, TextStyle, Ui, widgets::Label};
+use eframe::egui::{
+    Align, Frame, Layout, RichText, ScrollArea, TextEdit, TextStyle, Ui, Vec2, widgets::Label,
+};
 
 use crate::style;
 
@@ -25,7 +27,7 @@ impl super::ToolItem for UrlConverter {
     }
 
     fn update(&mut self, ui: &mut Ui) {
-        let bottom_height = 80.0;
+        let bottom_height = 86.0;
         let available_height = ui.available_height() - bottom_height;
         let desired_height = available_height.max(300.0);
         let label_height = 26.0;
@@ -73,21 +75,41 @@ impl super::ToolItem for UrlConverter {
                 });
             });
         });
-        ui.add_space(8.0);
+        ui.separator();
 
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing = (8.0, 8.0).into();
-            ui.label("转换：");
-            let btns = vec![
-                ui.selectable_value(&mut self.conversion, Conversion::Decode, "解码"),
-                ui.selectable_value(&mut self.conversion, Conversion::Encode, "编码"),
-            ];
-            for btn in btns {
-                if btn.changed() {
-                    self.convert();
-                }
-            }
-        });
+        ui.allocate_ui_with_layout(
+            (0.0, 32.0).into(), // 高度需要不小于 frame 的高度
+            Layout::left_to_right(Align::Center),
+            |ui| {
+                ui.spacing_mut().item_spacing = (8.0, 8.0).into();
+
+                Frame::new()
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .inner_margin(Vec2::new(8.0, 4.0))
+                    .corner_radius(2)
+                    .show(ui, |ui| {
+                        ui.label("自动更新");
+                    });
+                ui.add_space(16.0);
+
+                ui.label("转换");
+                Frame::default()
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .inner_margin(4)
+                    .corner_radius(6)
+                    .show(ui, |ui| {
+                        let btns = vec![
+                            ui.selectable_value(&mut self.conversion, Conversion::Decode, "解码"),
+                            ui.selectable_value(&mut self.conversion, Conversion::Encode, "编码"),
+                        ];
+                        for btn in btns {
+                            if btn.changed() {
+                                self.convert();
+                            }
+                        }
+                    });
+            },
+        );
         ui.add_space(8.0);
 
         // 警告信息

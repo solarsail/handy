@@ -3,8 +3,8 @@ use std::f32;
 use std::time::{Duration, Instant};
 
 use eframe::egui::{
-    Button, CursorIcon, FontFamily, FontId, RichText, ScrollArea, TextEdit, TextFormat, TextStyle,
-    Ui, UiKind, text::LayoutJob, widgets::Label,
+    Align, Button, CursorIcon, Frame, Layout, RichText, ScrollArea, TextEdit, TextStyle, Ui,
+    UiKind, widgets::Label,
 };
 use egui_json_tree::{DefaultExpand, JsonTree, JsonTreeStyle, render::DefaultRender};
 
@@ -36,6 +36,7 @@ pub struct JsonConverter {
     #[cfg(not(target_arch = "wasm32"))]
     prompt_vanish_at: Instant,
     pythonic_style: bool,
+    //use_single_quotes: bool,
 }
 
 impl super::ToolItem for JsonConverter {
@@ -48,7 +49,7 @@ impl super::ToolItem for JsonConverter {
     }
 
     fn update(&mut self, ui: &mut Ui) {
-        let bottom_height = 80.0;
+        let bottom_height = 86.0;
         let available_height = ui.available_height() - bottom_height;
         let desired_height = available_height.max(300.0);
         let label_height = 26.0;
@@ -193,95 +194,109 @@ impl super::ToolItem for JsonConverter {
                 });
             });
         });
-        ui.add_space(8.0);
+        ui.separator();
 
-        ui.horizontal(|ui| {
-            // 执行按钮
-            let btn_response = ui.scope(|ui| {
-                ui.spacing_mut().button_padding = (8.0, 4.0).into();
-                ui.add(Button::new("⚙ 处理").fill(style::primary_color(ui.visuals().dark_mode)))
-            });
+        ui.allocate_ui_with_layout(
+            (0.0, 32.0).into(),
+            Layout::left_to_right(Align::Center),
+            |ui| {
+                ui.spacing_mut().item_spacing = (8.0, 8.0).into();
 
-            ui.spacing_mut().item_spacing = (8.0, 8.0).into();
-            if btn_response.inner.clicked() {
-                self.copied_prompt = "";
-                self.use_json_tree = false;
-                let input = if self.pythonic_style {
-                    self.input.replace("'", "\"").replace("None", "null")
-                } else {
-                    self.input.clone()
-                };
-                match self.conversion {
-                    Conversion::Deserialize => match serde_json::from_str::<String>(&input) {
-                        Ok(v) => self.converted = v,
-                        Err(e) => self.warning = e.to_string(),
-                    },
-                    Conversion::Serialize => match serde_json::to_string(&input) {
-                        Ok(v) => self.converted = v,
-                        Err(e) => self.warning = e.to_string(),
-                    },
-                    _ => self.converted = input,
-                }
-                match serde_json::from_str::<serde_json::Value>(&self.converted) {
-                    Ok(v) => match self.format {
-                        Formatter::Pretty => match serde_json::to_string_pretty(&v) {
-                            Ok(c) => {
-                                self.converted = c;
-                                self.use_json_tree = true;
-                                self.warning = String::new();
-                            }
-                            Err(e) => self.warning = e.to_string(),
-                        },
-                        Formatter::Minimize => match serde_json::to_string(&v) {
-                            Ok(c) => {
-                                self.converted = c;
-                                self.warning = String::new();
-                            }
-                            Err(e) => self.warning = e.to_string(),
-                        },
-                        _ => self.warning = String::new(),
-                    },
-                    Err(e) => self.warning = e.to_string(),
-                }
-            }
-
-            // 转换选项
-            ui.label("转换：");
-            ui.selectable_value(&mut self.conversion, Conversion::None, "无");
-            ui.selectable_value(&mut self.conversion, Conversion::Deserialize, "反序列化")
-                .on_hover_ui(|ui| {
-                    ui.label("输入需要为有效的字符串，包含两端的引号（\"）");
+                // 执行按钮
+                let btn_response = ui.scope(|ui| {
+                    ui.spacing_mut().button_padding = (8.0, 4.0).into();
+                    ui.add(Button::new("⚙ 处理").fill(style::primary_color(ui.visuals().dark_mode)))
                 });
-            if ui
-                .selectable_value(&mut self.conversion, Conversion::Serialize, "序列化")
-                .clicked()
-            {
-                // 序列化后无法格式化 json
-                self.format = Formatter::None;
-            }
-            ui.add_space(16.0);
-            // 格式化选项
-            ui.label("格式：");
-            ui.selectable_value(&mut self.format, Formatter::None, "无");
-            ui.selectable_value(&mut self.format, Formatter::Pretty, "展开");
-            ui.selectable_value(&mut self.format, Formatter::Minimize, "压缩");
-            ui.add_space(16.0);
-            let mut cb_label_job = LayoutJob::default();
-            cb_label_job.append("Python dict 风格（如 ", 0.0, TextFormat::default());
-            cb_label_job.append(
-                "{'key': None}",
-                0.0,
-                TextFormat {
-                    font_id: FontId {
-                        family: FontFamily::Monospace,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            );
-            cb_label_job.append(" ）", 0.0, TextFormat::default());
-            ui.checkbox(&mut self.pythonic_style, cb_label_job);
-        });
+
+                if btn_response.inner.clicked() {
+                    self.copied_prompt = "";
+                    self.use_json_tree = false;
+                    let input = if self.pythonic_style {
+                        self.input.replace("'", "\"").replace("None", "null")
+                    } else {
+                        self.input.clone()
+                    };
+                    match self.conversion {
+                        Conversion::Deserialize => match serde_json::from_str::<String>(&input) {
+                            Ok(v) => self.converted = v,
+                            Err(e) => self.warning = e.to_string(),
+                        },
+                        Conversion::Serialize => match serde_json::to_string(&input) {
+                            Ok(v) => self.converted = v,
+                            Err(e) => self.warning = e.to_string(),
+                        },
+                        _ => self.converted = input,
+                    }
+                    match serde_json::from_str::<serde_json::Value>(&self.converted) {
+                        Ok(v) => match self.format {
+                            Formatter::Pretty => match serde_json::to_string_pretty(&v) {
+                                Ok(c) => {
+                                    self.converted = c;
+                                    self.use_json_tree = true;
+                                    self.warning = String::new();
+                                }
+                                Err(e) => self.warning = e.to_string(),
+                            },
+                            Formatter::Minimize => match serde_json::to_string(&v) {
+                                Ok(c) => {
+                                    self.converted = c;
+                                    self.warning = String::new();
+                                }
+                                Err(e) => self.warning = e.to_string(),
+                            },
+                            _ => self.warning = String::new(),
+                        },
+                        Err(e) => self.warning = e.to_string(),
+                    }
+                }
+                ui.add_space(16.0);
+
+                // 转换选项
+                ui.label("转换");
+                Frame::default()
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .inner_margin(4)
+                    .corner_radius(6)
+                    .show(ui, |ui| {
+                        ui.selectable_value(&mut self.conversion, Conversion::None, "无");
+                        ui.selectable_value(
+                            &mut self.conversion,
+                            Conversion::Deserialize,
+                            "反序列化",
+                        )
+                        .on_hover_ui(|ui| {
+                            ui.label("输入需要为有效的字符串，包含两端的引号（\"）");
+                        });
+                        if ui
+                            .selectable_value(&mut self.conversion, Conversion::Serialize, "序列化")
+                            .clicked()
+                        {
+                            // 序列化后无法格式化 json
+                            self.format = Formatter::None;
+                        }
+                    });
+                ui.add_space(16.0);
+
+                // 格式化选项
+                ui.label("格式");
+                Frame::default()
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .inner_margin(4)
+                    .corner_radius(6)
+                    .show(ui, |ui| {
+                        ui.selectable_value(&mut self.format, Formatter::None, "无");
+                        ui.selectable_value(&mut self.format, Formatter::Pretty, "展开");
+                        ui.selectable_value(&mut self.format, Formatter::Minimize, "压缩");
+                    });
+                ui.add_space(16.0);
+
+                ui.checkbox(
+                    &mut self.pythonic_style,
+                    "Python dict 风格（如 {'key': None}）",
+                );
+                //ui.checkbox(&mut self.use_single_quotes, "使用单引号");
+            },
+        );
         ui.add_space(8.0);
 
         // 警告提示
@@ -307,6 +322,7 @@ impl Default for JsonConverter {
             #[cfg(not(target_arch = "wasm32"))]
             prompt_vanish_at: Instant::now(),
             pythonic_style: false,
+            //use_single_quotes: false,
         }
     }
 }
