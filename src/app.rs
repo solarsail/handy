@@ -7,10 +7,7 @@ use eframe::{
     epaint::text::{FontInsert, FontPriority, InsertFontFamily},
 };
 
-use crate::{
-    tool_card::ToolCard,
-    tools::{JsonConverter, LineFormatter, TimestampConverter, ToolItem, UrlConverter},
-};
+use crate::{tool_card::ToolCard, tools::*};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
@@ -30,6 +27,10 @@ impl App {
                 Box::new(JsonConverter::default()),
                 Box::new(UrlConverter::default()),
                 Box::new(LineFormatter::default()),
+                Box::new(IssueJump::default()),
+                Box::new(TaskGraphJump::default()),
+                #[cfg(debug_assertions)]
+                Box::new(LogRetriever::default()),
             ],
             active_tool: Some(0),
         }
@@ -153,16 +154,6 @@ impl eframe::App for App {
                 }
             }
             egui::warn_if_debug_build(ui);
-
-            if cfg!(target_arch = "wasm32") {
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        ui.hyperlink_to("📦 repo ", "https://github.com/solarsail/handy");
-                        ui.label("| powered by wasm");
-                    });
-                });
-            }
         });
 
         // 主面板
